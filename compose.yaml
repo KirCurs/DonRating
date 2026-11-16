@@ -1,0 +1,65 @@
+name: ratingdon-pilot
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    user: postgres
+    environment:
+      POSTGRES_USER: ratingdon
+      POSTGRES_DB: ratingdon
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Generate and export POSTGRES_PASSWORD first}"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ratingdon -d ratingdon"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: migrate/migrate:v4.20.1
+    user: "10001:10001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - -path
+      - /migrations
+      - -database
+      - "postgres://ratingdon:${POSTGRES_PASSWORD:?Generate and export POSTGRES_PASSWORD first}@postgres:5432/ratingdon?sslmode=disable"
+      - up
+    restart: "no"
+
+  app:
+    build: .
+    user: "10001:10001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      APP_ADDR: 0.0.0.0:8080
+      DATABASE_URL: "host=postgres port=5432 user=ratingdon password=${POSTGRES_PASSWORD:?Generate and export POSTGRES_PASSWORD first} dbname=ratingdon sslmode=disable"
+      ADMIN_TOKEN: "${ADMIN_TOKEN:?Generate and export ADMIN_TOKEN first}"
+      DEVICE_TOKENS_JSON: "${DEVICE_TOKENS_JSON:?Generate and export DEVICE_TOKENS_JSON first}"
+      DEVICES_JSON: "${DEVICES_JSON:-}"
+      REQUEST_TTL: "${REQUEST_TTL:-30s}"
+      SLIDESHOW_URL: "${SLIDESHOW_URL:-}"
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    stop_grace_period: 15s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

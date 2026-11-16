@@ -1,0 +1,23 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+/.cache/
+/backups/
+/bin/
+/feedback
+*.log
+
+# Local tooling and the archived project outline
+/.agents/
+/.codex/
+/don-feedback/
+/node_modules/
+/output/
+
+# Database exports and generated test output
+*.dump
+*.sql.gz
+*.sqlite
+*.sqlite3
+coverage.out

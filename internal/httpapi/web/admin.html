@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F8F6F0">
+  <title>Стойка регистрации — Санаторий «Дон»</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="/assets/manrope.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/cormorant-semibold.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+  <script src="/admin.js" defer></script>
+</head>
+<body class="admin-page">
+  <div class="page-shell admin-shell">
+    <header class="page-header">
+      <div class="brand"><img src="/assets/don-logo.svg" alt="Санаторий Дон" width="170" height="60"></div>
+      <span class="header-note">Стойка регистрации</span>
+    </header>
+    <main class="admin-main">
+      <div class="admin-intro">
+        <div class="eyebrow"><span></span> Обратная связь</div>
+        <h1>Оценка отдыха</h1>
+        <p class="intro">Пригласите гостя оценить отдых.<br>Форма появится на выбранном планшете на <span id="request-ttl">30</span> секунд.</p>
+      </div>
+      <section id="login-panel" class="login-panel" hidden aria-labelledby="login-title">
+        <h2 id="login-title">Доступ для сотрудника</h2>
+        <p class="dialog-intro">Введите ключ доступа к стойке регистрации.</p>
+        <form id="login-form">
+          <label class="field-label" for="admin-token">Ключ доступа</label>
+          <div class="login-row"><input id="admin-token" type="password" autocomplete="current-password" required><button id="login-button" class="button button-primary" type="submit">Войти</button></div>
+          <p id="login-error" class="form-message error-message" role="alert" hidden></p>
+        </form>
+      </section>
+      <div class="connection-row"><p id="admin-connection" class="connection-status" role="status" aria-live="polite">Подключаемся к планшетам…</p><button id="change-access" class="text-button" hidden type="button">Изменить ключ доступа</button></div>
+      <p id="admin-error" class="admin-error error-message" role="alert" hidden></p>
+      <section id="device-list" class="device-list" aria-label="Планшеты стойки регистрации" aria-busy="true"></section>
+      <p id="empty-devices" class="empty-devices" hidden>Планшеты пока не настроены.</p>
+      <p class="admin-help">Нажмите «Попросить оценку», когда планшет передан гостю. После ответа или через 30 секунд экран вернётся к показу слайдов.</p>
+    </main>
+    <footer class="page-footer"><span>Санаторий «Дон» <span class="footer-dot">·</span> Воронеж</span><span>Обратная связь на стойке регистрации</span></footer>
+  </div>
+</body>
+</html>

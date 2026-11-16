@@ -1,0 +1,14 @@
+.git
+.agents
+.codex
+.env
+.env.*
+!.env.example
+backups
+*.dump
+*.sql.gz
+*.log
+feedback
+coverage.out
+node_modules
+.DS_Store
