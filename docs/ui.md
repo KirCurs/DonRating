@@ -1,37 +1,41 @@
-# Интерфейс
+# UI guide
 
-## Экран сотрудника
+## Receptionist screen
 
-Адрес: `/admin`. При включённой авторизации введите ключ сотрудника.
-Карточка планшета показывает связь, текущее приглашение и последний ответ.
-Нажмите «Попросить оценку», когда планшет в сети и не занят активным приглашением.
-Сервер создаст идентификатор и срок действия автоматически.
+URL: `/admin`. If authorization is enabled, enter the receptionist token.
+Each tablet card shows connectivity, its current request, and its latest answer.
+Click **«Попросить оценку»** (Request a rating) when the tablet is online and has
+no active request. The server generates the request ID and expiration time.
 
-## Экран гостя
+## Guest screen
 
-Адрес: `/tablet?device_id=reception-1`.
-Для настройки с ключом откройте
-`/tablet?device_id=reception-1#token=КЛЮЧ_ПЛАНШЕТА`.
-Фрагмент удаляется из адреса, ключ хранится в сессии вкладки.
-После закрытия сессии настройку потребуется повторить.
+URL: `/tablet?device_id=reception-1`.
+To provision a token, open
+`/tablet?device_id=reception-1#token=TABLET_KEY`.
+The fragment is removed from the address; the token is stored in the tab session.
+After that session ends, provisioning must be repeated.
 
-В ожидании работает слайд-шоу или локальная заставка. По приглашению появляется
-форма оценки 1–5. После успешной отправки показывается благодарность, через две
-секунды возобновляется показ. Без ответа форма закрывается по истечении срока.
-Временная ошибка отправки сохраняет выбор для повторной попытки до окончания срока.
+While idle, the tablet shows the slideshow or a local standby screen.
+An invitation displays a rating form with scores from 1 to 5.
+A successful submission shows a thank-you message, then resumes the slideshow
+after two seconds. Unanswered requests close at their deadline.
+Temporary submission failures preserve the selected score for retry until expiry.
 
-Для проверки на одном компьютере используйте две вкладки: сотрудник и планшет.
-Для физического планшета требуется сетевой доступ к Go-приложению, отдельный
-ключ и HTTPS; стандартный Compose публикует порт только на loopback.
+For local verification, use two tabs: receptionist and tablet.
+A physical tablet requires network access to the Go application, its own token,
+and HTTPS. The default Compose configuration publishes only on loopback.
 
-## Изменения интерфейса
+## Frontend changes
 
-Файлы находятся в `internal/httpapi/web`:
+Files are located in `internal/httpapi/web`:
 
-- `admin.html`, `admin.js` — сотрудник;
-- `tablet.html`, `tablet.js` — гость;
-- `app.css`, `app.js` — общие стили и работа с API.
+- `admin.html`, `admin.js`: receptionist interface.
+- `tablet.html`, `tablet.js`: guest interface.
+- `app.css`, `app.js`: shared styles and API utilities.
 
-Файлы встроены в бинарник. После изменения перезапустите `go run ./cmd/feedback`
-или пересоберите Docker-образ. Основной интерфейс использует локальные ресурсы;
-внешний плеер может иметь собственные зависимости от CDN.
+Files are embedded in the binary. After changes, restart `go run ./cmd/feedback`
+or rebuild the Docker image. The main interface uses local assets;
+the external player may have its own CDN dependencies.
+
+The application UI is currently in Russian; the labels quoted here match
+what users see on screen.

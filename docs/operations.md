@@ -1,12 +1,12 @@
-# Запуск и эксплуатация
+# Operations
 
-## Без Docker
+## Running without Docker
 
-Требуются Go 1.25.3, PostgreSQL (для пилота использована версия 16)
-и CLI `migrate` из проекта golang-migrate. Команды выполняются из корня репозитория.
+Requirements: Go 1.25.3, PostgreSQL (version 16 was used for the pilot),
+and the `migrate` CLI from golang-migrate. Run commands from the repository root.
 
-Создайте отдельную базу и задайте строку подключения под свою установку.
-Пример для локальной PostgreSQL с заранее настроенной ролью `ratingdon`:
+Create a dedicated database and set a connection string for your installation.
+This example assumes an existing local PostgreSQL role named `ratingdon`:
 
 ```sh
 createdb -h localhost -U ratingdon ratingdon
@@ -15,41 +15,41 @@ migrate -path migrations -database "$DATABASE_URL" up
 go run ./cmd/feedback
 ```
 
-Если сервер требует пароль, настройте его отдельно в соответствии с вашей
-установкой PostgreSQL. Go-приложение не создаёт базу и не применяет миграции.
-Адрес по умолчанию — `127.0.0.1:8080`. Откройте `/admin` и
-`/tablet?device_id=reception-1`. При локальном запуске ключи необязательны.
-Для остановки используйте Ctrl+C в терминале приложения.
+If your server requires a password, configure authentication for your PostgreSQL
+installation separately. The Go application does not create databases or apply
+migrations. The default address is `127.0.0.1:8080`. Open `/admin` and
+`/tablet?device_id=reception-1`. Tokens are optional for local loopback access.
+Press Ctrl+C in the application terminal to stop the server.
 
-## Настройки
+## Configuration
 
-Приложение читает окружение при старте. `.env.example` — справочник;
-Go не загружает `.env` автоматически. Compose использует собственный механизм
-подстановки переменных.
+The application reads environment variables at startup. `.env.example` is a
+reference; Go does not load `.env` automatically. Compose has its own environment
+variable interpolation mechanism.
 
-| Переменная | Назначение / значение по умолчанию |
+| Variable | Purpose / default |
 | --- | --- |
-| `APP_ADDR` | Адрес HTTP, `127.0.0.1:8080` |
-| `DATABASE_URL` | Строка подключения pgx; текущий fallback: `host=/tmp port=5432 user=sh dbname=ratingdon`. Для своей установки задавайте явно |
-| `DEVICES_JSON` | Массив устройств; по умолчанию `[{"id":"reception-1","name":"Ресепшен · планшет 1"}]` |
-| `REQUEST_TTL` | Срок приглашения, `30s`; от `5s` до `10m` |
-| `ADMIN_TOKEN` | Ключ сотрудника |
-| `DEVICE_TOKENS_JSON` | Объект `{"reception-1":"ключ"}` |
-| `SLIDESHOW_URL` | Полный HTTP(S)-адрес поддерживаемого плеера; пустое значение отключает прокси |
-| `POSTGRES_PASSWORD` | Пароль отдельной БД в Compose; не читается Go напрямую |
-| `TEST_DATABASE_URL` | База для интеграционных тестов; не настройка приложения |
+| `APP_ADDR` | HTTP listen address, `127.0.0.1:8080` |
+| `DATABASE_URL` | pgx connection string. Current fallback: `host=/tmp port=5432 user=sh dbname=ratingdon`; set explicitly for your installation |
+| `DEVICES_JSON` | Device array; default: `[{"id":"reception-1","name":"Ресепшен · планшет 1"}]` |
+| `REQUEST_TTL` | Request lifetime, `30s`; range `5s`–`10m` |
+| `ADMIN_TOKEN` | Receptionist token |
+| `DEVICE_TOKENS_JSON` | Object such as `{"reception-1":"token"}` |
+| `SLIDESHOW_URL` | Full HTTP(S) URL of a supported player; empty disables the proxy |
+| `POSTGRES_PASSWORD` | Password for the Compose database; not read directly by Go |
+| `TEST_DATABASE_URL` | Integration test database; not an application setting |
 
-ID устройства: 1–64 латинские буквы, цифры, `_` и `-`. ID уникальны,
-имена непустые. При сетевом `APP_ADDR` обязательны ключ сотрудника и ключ
-каждого планшета длиной не менее 24 символов. Все ключи должны различаться
-и не содержать пробелы или управляющие символы.
+Device IDs must be unique and contain 1–64 ASCII letters, digits, `_`, or `-`.
+Names must be nonempty. A non-loopback `APP_ADDR` requires a receptionist token
+and a token for every tablet, each at least 24 characters long. Tokens must
+be distinct and contain no whitespace or control characters.
 
 ## Docker Compose
 
-Команды первого запуска находятся в [README](../README.md#быстрый-запуск).
-Compose запускает PostgreSQL 16, контейнер миграций и Go-приложение.
-Приложение стартует после готовности БД и успешных миграций.
-Данные находятся в именованном томе; PostgreSQL не публикует порт наружу.
+First-run commands are in the [README](../README.md#getting-started).
+Compose starts PostgreSQL 16, a migration container, and the Go application.
+The application starts only after the database is healthy and migrations succeed.
+Data is stored in a named volume. PostgreSQL has no published host port.
 
 ```sh
 docker compose ps
@@ -57,21 +57,21 @@ docker compose logs --tail=100 app
 docker compose logs --tail=100 migrate
 ```
 
-Для обновления кода с прежним окружением:
+To rebuild after code changes, using your existing environment values:
 
 ```sh
 docker compose up --build -d --wait
 ```
 
-Сохраняйте прежний пароль PostgreSQL для существующего тома. Перед обновлением
-схемы сделайте резервную копию. `docker compose down` сохраняет том;
-`docker compose down -v` удаляет данные.
+Keep the original PostgreSQL password for an existing volume. Back up the database
+before schema updates. `docker compose down` preserves the volume;
+`docker compose down -v` deletes its data.
 
-## Миграции существующей базы
+## Migrating an existing database
 
-Перед изменением схемы остановите приложение, создайте резервную копию
-и проверьте её восстановление на отдельной базе. Не размещайте копии в Git.
-Пример для URL, совместимого с PostgreSQL CLI и migrate:
+Before changing the schema, stop the application, create a backup, and verify
+restoration in a separate database. Keep backups out of Git.
+The following assumes a URL accepted by both PostgreSQL CLI tools and migrate:
 
 ```sh
 pg_dump --dbname="$DATABASE_URL" --format=custom --file=/tmp/ratingdon-before-migration.dump
@@ -80,54 +80,53 @@ migrate -path migrations -database "$DATABASE_URL" up
 migrate -path migrations -database "$DATABASE_URL" version
 ```
 
-Путь примера перезаписывается при повторном запуске: для регулярных копий
-используйте уникальные имена и отдельное защищённое хранилище.
-Текущая схема — версия 3, `dirty=false`.
+The example backup path is overwritten on subsequent runs. Use unique filenames
+and dedicated protected storage for regular backups.
+The current schema version is 3, with `dirty=false`.
 
-| Версия | Изменение |
+| Version | Change |
 | --- | --- |
-| 1 | Таблица оценок `ratings` |
-| 2 | Таблица приглашений `rating_requests` |
-| 3 | Статусы, время жизни, ограничения и индексы приглашений |
+| 1 | `ratings` table |
+| 2 | `rating_requests` table |
+| 3 | Request statuses, lifetime, constraints, and indexes |
 
-Миграция 3 сохраняет существующие оценки. Старые приглашения без достоверного
-времени жизни закрываются: связанные с оценками — как отвеченные,
-остальные — как истёкшие. Перед и после обновления сравните число оценок.
+Migration 3 preserves existing ratings. Legacy requests without reliable lifetime
+information are closed: requests with ratings become answered, and the others
+become expired. Compare rating counts before and after the update.
 
-При `dirty=true` сначала разберитесь с выполненным SQL. `migrate force`
-меняет метку версии, но не исправляет схему. Откат изучайте до выполнения:
-обратные миграции могут удалять таблицы или поля.
+If `dirty=true`, inspect which SQL statements were executed before proceeding.
+`migrate force` changes the version marker but does not repair the schema.
+Review rollback migrations before running them: they may remove tables or columns.
 
-## Слайд-шоу
+## Slideshow integration
 
 ```sh
 export SLIDESHOW_URL='http://slideshow-host:5000/slideshow/reception'
 go run ./cmd/feedback
 ```
 
-Это пример адреса: замените его адресом вашего совместимого плеера.
-Для Compose адрес должен быть доступен из контейнера; `localhost` внутри
-контейнера не указывает на хост или другой сервер.
+Replace this example address with your compatible player URL.
+For Compose, the source must be reachable from the container. Container-local
+`localhost` does not refer to the host machine or a different server.
 
-Адаптер рассчитан на маршруты существующего транслятора:
-`/slideshow/<slug>`, `/api/time`, `/api/slideshow/slug/<slug>/status`
-и `/uploads/<filename>`. Публичный вход приложения — `/slideshow/`.
-Управление материалами остаётся во внешней системе.
+The adapter targets these transmitter routes: `/slideshow/<slug>`, `/api/time`,
+`/api/slideshow/slug/<slug>/status`, and `/uploads/<filename>`.
+The application's proxy entry point is `/slideshow/`.
+Content management remains in the external system.
 
-## Доступ с планшетов по сети
+## Network access for tablets
 
-Стандартный Compose публикует HTTP только на `127.0.0.1`.
-Для установки на ресепшене настройте HTTPS через обратный прокси и доступный
-планшетам адрес. Передавайте запросы на Go-сервер с корректным Host,
-соответствующим адресу браузера; API проверяет Origin.
-Для нативного запуска выберите сетевой `APP_ADDR` и задайте все ключи.
-Не передавайте Bearer-ключи через открытую сеть по HTTP.
+The default Compose configuration publishes HTTP only on `127.0.0.1`.
+For reception deployment, configure HTTPS through a reverse proxy at an address
+reachable by tablets. Forward the correct Host matching the browser URL;
+the API checks Origin. For native execution, choose a network `APP_ADDR` and
+configure all required tokens. Do not transmit Bearer tokens over public HTTP.
 
-Текущие ключи — общие секреты роли сотрудника и отдельных устройств,
-а не пользовательские аккаунты. Ротация требует изменения окружения,
-перезапуска приложения и обновления ключей в интерфейсах.
+Tokens are shared secrets for the receptionist role and individual devices,
+not user accounts. Rotation requires updating the environment, restarting
+the application, and replacing the tokens in the interfaces.
 
-## Проверки и диагностика
+## Tests and troubleshooting
 
 ```sh
 go test ./...
@@ -135,29 +134,29 @@ go vet ./...
 go test -race ./...
 ```
 
-Интеграционные тесты создают и удаляют уникальные схемы PostgreSQL.
-Используйте отдельную тестовую базу и роль с правом создания схем:
+Integration tests create and remove unique PostgreSQL schemas. Use a separate
+test database and a role allowed to create schemas:
 
 ```sh
 export TEST_DATABASE_URL='postgres://ratingdon@localhost:5432/ratingdon_test?sslmode=disable'
 go test -race -count=1 ./...
 ```
 
-Без этой переменной проверки хранилища пропускаются. Остальные тесты
-проверяют валидацию, HTTP-обработчики, настройки и прокси.
+Without this variable, PostgreSQL storage tests are skipped. Other tests cover
+validation, HTTP handlers, configuration, and the slideshow proxy.
 
-| Симптом | Что проверить |
+| Symptom | Check |
 | --- | --- |
-| Процесс сразу завершился | Окружение, доступ к БД, свободен ли порт |
-| `/ready` возвращает 503 | Соединение с PostgreSQL |
-| При создании 409 `device_offline` | Открыта ли страница нужного планшета, идут ли запросы `/state` |
-| При создании 409 `active_request` | Предыдущее приглашение ещё действует |
-| 401 | Ключ роли или соответствующего устройства |
-| 403 | Origin браузера и Host запроса |
-| Плеер не загрузился | `SLIDESHOW_URL`, доступ из процесса/контейнера, совместимость маршрутов |
+| Application exits immediately | Environment variables, database connectivity, port availability |
+| `/ready` returns 503 | PostgreSQL connection |
+| Request creation returns 409 `device_offline` | Correct tablet page is open and polling `/state` |
+| Request creation returns 409 `active_request` | Previous request is still active |
+| 401 | Correct role or device token |
+| 403 | Browser Origin and forwarded Host |
+| Player fails to load | `SLIDESHOW_URL`, reachability from the process/container, supported routes |
 
-Основной журнал приложения выводится в stderr в JSON. Обработчики `/health`
-и `/version` дополнительно печатают метод в stdout; полностью единый формат
-логов пока не реализован. При SIGINT/SIGTERM сервер ожидает завершения
-текущих HTTP-запросов до десяти секунд. Подключение к БД при старте ограничено
-пятью секундами. Heartbeat устройств после перезапуска восстанавливается опросом.
+The main application logger writes JSON to stderr. The `/health` and `/version`
+handlers additionally print the request method to stdout; logging is not yet
+fully uniform. SIGINT/SIGTERM allow up to ten seconds for HTTP requests to finish.
+The startup database connection check has a five-second timeout.
+Device heartbeat state is restored by polling after a restart.

@@ -1,86 +1,87 @@
-# Архитектура
+# Architecture
 
-RatingDon — одно Go-приложение с HTTP API, встроенным интерфейсом и PostgreSQL.
-Существующий транслятор слайдов работает отдельно и подключается по HTTP.
+RatingDon is a single Go application with an HTTP API, an embedded frontend,
+and PostgreSQL storage. The existing slideshow transmitter runs separately
+and is accessed over HTTP.
 
 ```mermaid
 flowchart LR
-    A[Браузер сотрудника] --> H[Go HTTP API]
-    T[Браузер планшета] --> H
+    A[Receptionist browser] --> H[Go HTTP API]
+    T[Tablet browser] --> H
     H --> S[feedback.Store]
     S --> DB[(PostgreSQL)]
-    T --> P[Прокси слайд-шоу в Go]
-    P --> X[Внешний транслятор]
+    T --> P[Go slideshow proxy]
+    P --> X[External transmitter]
 ```
 
-## Пакеты
+## Packages
 
-| Путь | Ответственность |
+| Path | Responsibility |
 | --- | --- |
-| `cmd/feedback` | Запуск, соединение компонентов, сигналы завершения |
-| `internal/config` | Чтение и проверка окружения |
-| `internal/httpapi` | Маршруты, авторизация, JSON, HTTP-ошибки |
-| `internal/httpapi/web` | Экраны сотрудника и планшета, встроенные через `go:embed` |
-| `internal/feedback` | Модели, проверки, жизненный цикл и операции хранилища |
-| `internal/postgres` | Создание и проверка пула pgx |
-| `internal/slideshow` | Прокси разрешённых ресурсов внешнего плеера |
-| `migrations` | Версионируемые изменения схемы PostgreSQL |
+| `cmd/feedback` | Startup, component wiring, shutdown signals |
+| `internal/config` | Environment parsing and validation |
+| `internal/httpapi` | Routing, authorization, JSON, HTTP errors |
+| `internal/httpapi/web` | Receptionist and tablet screens, embedded with `go:embed` |
+| `internal/feedback` | Models, validation, request lifecycle, storage operations |
+| `internal/postgres` | pgx connection pool creation and connectivity checks |
+| `internal/slideshow` | Proxy for permitted external player resources |
+| `migrations` | Versioned PostgreSQL schema changes |
 
-Обработчик зависит от интерфейса `RatingScore`, объявленного в `httpapi`.
-`feedback.Store` реализует его для PostgreSQL; HTTP-тесты подставляют заглушку.
-SQL и транзакции сосредоточены в хранилище, преобразование ошибок в HTTP —
-в обработчиках. Отдельного сервисного слоя в текущей реализации нет.
+HTTP handlers depend on the `RatingScore` interface declared in `httpapi`.
+`feedback.Store` implements it for PostgreSQL; HTTP tests use a stub.
+SQL and transactions live in the store. Handlers translate application errors
+into HTTP responses. There is no separate service layer in this implementation.
 
-## Приглашение и ответ
+## Requests and answers
 
-`rating_requests` хранит UUID приглашения, устройство, состояние и временные
-отметки. `ratings` хранит идентификатор приглашения и оценку 1–5.
-Таблицы соединяются по `ratings.request_id = rating_requests.id`.
-Существующие исторические оценки без приглашений сохраняются.
+`rating_requests` stores the request UUID, device, status, and timestamps.
+`ratings` stores a request ID and a score from 1 to 5. The tables are joined on
+`ratings.request_id = rating_requests.id`. Existing legacy ratings without
+corresponding requests are preserved.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending: сотрудник создал приглашение
-    pending --> displayed: планшет подтвердил показ
-    pending --> answered: принят ответ
-    displayed --> answered: принят ответ
-    pending --> expired: истёк срок
-    displayed --> expired: истёк срок
+    [*] --> pending: receptionist creates request
+    pending --> displayed: tablet acknowledges display
+    pending --> answered: answer accepted
+    displayed --> answered: answer accepted
+    pending --> expired: deadline reached
+    displayed --> expired: deadline reached
     answered --> [*]
     expired --> [*]
 ```
 
-Подтверждение показа не является обязательным условием принятия ответа:
-действующее приглашение в `pending` тоже допускает ответ.
-Истечение срока фиксируется при обращениях к хранилищу, отдельной фоновой
-задачи очистки нет. Клиент закрывает форму по серверному сроку даже при потере связи.
+Display acknowledgement is not required to submit an answer:
+a valid request in `pending` can also be answered. Expiration is persisted
+when the store is accessed; there is no background cleanup job.
+The client closes the form at the server-provided deadline even if connectivity
+is lost.
 
-## Конкурентный доступ
+## Concurrent access
 
-Создание приглашения использует транзакционную advisory-блокировку по устройству
-и частичный уникальный индекс: одновременно активно только одно приглашение.
-Ответ блокирует строку приглашения через `FOR UPDATE`; запись оценки и переход
-в `answered` выполняются одной транзакцией.
+Request creation uses a per-device transaction advisory lock and a partial
+unique index to enforce one active request per device. Answer submission locks
+the request row with `FOR UPDATE`; inserting the rating and changing the status
+to `answered` happen in one transaction.
 
-Повтор того же ответа возвращает сохранённый результат, включая повтор после
-первоначального срока. Попытка заменить принятую оценку возвращает конфликт.
-Идентификатор чужого планшета не раскрывает его приглашение.
+Retrying the same answer returns the stored result, even after the original
+deadline. Attempting to change an accepted score returns a conflict.
+Requests belonging to another tablet are treated as not found.
 
-## Связь и слайд-шоу
+## Connectivity and slideshow
 
-Планшет опрашивает API примерно раз в секунду после завершения предыдущего
-запроса. Устройство считается подключённым, если последнее обращение к его
-маршруту состояния было менее восьми секунд назад.
-Эти отметки защищены mutex и хранятся только в памяти процесса.
-После перезапуска планшеты восстанавливают их следующим опросом.
+The tablet polls the API approximately one second after each completed request.
+A device is online if its state endpoint was accessed less than eight seconds
+ago. These timestamps are protected by a mutex and kept in process memory.
+After a restart, subsequent tablet polls restore presence.
 
-Прокси `/slideshow/` допускает только чтение поддерживаемых ресурсов плеера,
-не пересылает ключи и cookies приложения. Это адаптер существующего транслятора,
-а не универсальное встраивание любого сайта. Во время формы интерфейс
-приостанавливает плеер; затем продолжает показ в том же iframe.
+The `/slideshow/` proxy permits read-only access to supported player resources
+and does not forward application tokens or cookies. It adapts the existing
+transmitter rather than embedding arbitrary websites. The interface pauses
+the player while the form is visible and resumes it in the same iframe.
 
-## Границы текущего решения
+## Deployment boundaries
 
-Одного процесса достаточно для пилота. Горизонтальное масштабирование потребует
-общего механизма присутствия устройств. Имена устройств и ключи задаются при
-запуске; интерфейса регистрации устройств и пользовательских учётных записей нет.
+The pilot uses one application process. Horizontal scaling would require
+shared device presence tracking. Devices and tokens are configured at startup;
+there is no device enrollment interface or user account system.

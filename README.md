@@ -1,88 +1,96 @@
 # RatingDon
 
-Система сбора оценок гостей на ресепшене санатория «Дон».
-Сотрудник вызывает форму на выбранном планшете, гость ставит оценку от 1 до 5,
-после чего планшет возвращается к слайд-шоу. Идентификаторы приглашений
-генерирует сервер; ответы сохраняются в PostgreSQL.
+## What it solves
 
-## Возможности
+RatingDon collects guest feedback at the reception desk of Don Resort.
+It uses tablets that normally display a slideshow: a receptionist requests
+feedback, a rating form appears on the selected tablet, and the guest submits
+a score from 1 to 5. The tablet returns to the slideshow after submission
+or when the request expires.
 
-- Отдельные экраны сотрудника и гостя.
-- Статус подключения планшетов и подтверждение показа формы.
-- Одно активное приглашение на планшет, срок действия по умолчанию 30 секунд.
-- Защита от повторного сохранения ответа и отправки оценки с чужого планшета.
-- Возврат к показу после ответа или истечения срока.
-- Подключение существующего плеера через прокси только для чтения.
+The server generates request IDs, stores ratings in PostgreSQL, and prevents
+duplicate submissions. Receptionists can see tablet connectivity, request
+status, and the latest response.
 
-## Стек
+Built with Go, `net/http`, and pgx/v5. The HTML/CSS/JavaScript interface is
+embedded in the binary; no separate frontend server is required.
+See [Architecture](docs/architecture.md) and [HTTP API](docs/api.md) for details.
 
-Go 1.25.3, стандартный `net/http`, PostgreSQL 16, pgx/v5,
-HTML/CSS/JavaScript, Docker Compose. Интерфейс встроен в Go-бинарник через
-`go:embed`; отдельный Node.js-сервер и сборщик фронтенда не требуются.
+## Getting started
 
-## Быстрый запуск
-
-Из корня репозитория, с установленными Docker и Docker Compose:
+Requirements: Git, Docker with Docker Compose, and OpenSSL. For the first run:
 
 ```sh
+git clone https://github.com/KirCurs/DonRating.git
+cd DonRating
+
 export POSTGRES_PASSWORD="$(openssl rand -hex 24)"
 export ADMIN_TOKEN="$(openssl rand -hex 24)"
 export DEVICE_TOKENS_JSON="$(printf '{"reception-1":"%s"}' "$(openssl rand -hex 24)")"
 docker compose up --build -d --wait
 ```
 
-Compose создаёт отдельную базу, применяет миграции и запускает приложение.
-Сохраните пароль и ключи в менеджере паролей: при повторном запуске нужны прежние
-значения. Новый пароль в окружении не меняет пароль уже созданной базы.
+Compose starts PostgreSQL 16 in a separate volume, applies migrations,
+and starts the application.
 
-1. Откройте [экран сотрудника](http://127.0.0.1:8080/admin) и введите `ADMIN_TOKEN`.
-2. Откройте `http://127.0.0.1:8080/tablet?device_id=reception-1#token=КЛЮЧ_ПЛАНШЕТА`,
-   подставив значение для `reception-1` из `DEVICE_TOKENS_JSON`.
-3. Дождитесь статуса «В сети» и нажмите «Попросить оценку».
-4. Выберите оценку на планшете и отправьте её.
+1. Open the [receptionist interface](http://127.0.0.1:8080/admin) and enter `ADMIN_TOKEN`.
+2. Open `http://127.0.0.1:8080/tablet?device_id=reception-1#token=TABLET_KEY`,
+   replacing `TABLET_KEY` with the `reception-1` value from `DEVICE_TOKENS_JSON`.
+3. Wait for the tablet to appear online in the receptionist interface.
 
-Без `SLIDESHOW_URL` планшет показывает локальную заставку.
-Приложение Compose доступно только на компьютере запуска; настройка сети
-для физических планшетов описана в [инструкции по эксплуатации](docs/operations.md).
+Save the database password and tokens in a password manager. Export the same
+values on subsequent runs: changing `POSTGRES_PASSWORD` does not change
+the password of an existing database volume.
+
+View application logs or stop the stack:
 
 ```sh
 docker compose logs --tail=50 app
 docker compose down
 ```
 
-`down` сохраняет данные. Флаг `-v` удаляет том базы.
+`down` preserves data; adding `-v` deletes the database volume.
+For a native Go 1.25.3 setup, see [Operations](docs/operations.md).
+Screen setup is covered in the [UI guide](docs/ui.md).
 
-## Документация
+## Configuration
 
-| Документ | Содержание |
+Set environment variables before starting the application.
+[.env.example](.env.example) lists the available settings.
+The Go application does not load `.env` files automatically.
+
+| Variable | Purpose |
 | --- | --- |
-| [Эксплуатация](docs/operations.md) | Локальный запуск без Docker, настройки, миграции, диагностика |
-| [Архитектура](docs/architecture.md) | Пакеты, модель данных, состояния и конкурентный доступ |
-| [HTTP API](docs/api.md) | Маршруты, JSON, авторизация и примеры запросов |
-| [Интерфейс](docs/ui.md) | Сценарии сотрудника и гостя, подключение планшета |
+| `APP_ADDR` | Go HTTP address: `127.0.0.1:8080` for native execution; `0.0.0.0:8080` inside Compose |
+| `DATABASE_URL` | PostgreSQL connection string. Compose constructs it automatically; set it explicitly for a native setup |
+| `POSTGRES_PASSWORD` | PostgreSQL password for Compose |
+| `ADMIN_TOKEN` | Receptionist access token |
+| `DEVICES_JSON` | Tablet list, e.g. `[{"id":"reception-1","name":"Reception tablet 1"}]` |
+| `DEVICE_TOKENS_JSON` | Per-tablet tokens: `{"reception-1":"token"}` |
+| `REQUEST_TTL` | Response window: `30s` by default; allowed range `5s`–`10m` |
+| `SLIDESHOW_URL` | HTTP(S) URL of a compatible external player. If unset, the tablet displays a local standby screen |
 
-## Разработка
+Network binding requires a distinct receptionist token and a token for each
+tablet, all at least 24 characters long. Compose requires these tokens and
+publishes the application only on `127.0.0.1:8080`. Physical tablets require
+network access and HTTPS.
 
-```sh
-go test ./...
-go vet ./...
-go test -race ./...
-```
+See [Operations](docs/operations.md) for player integration, device configuration,
+migrations, and troubleshooting.
 
-Тесты PostgreSQL без `TEST_DATABASE_URL` пропускаются. Для их запуска
-используйте отдельную тестовую базу; подробности — в инструкции по эксплуатации.
-После изменений HTML/CSS/JS пересоберите приложение или Docker-образ.
+## Limitations
 
-## Текущий объём
+- Intended for a pilot deployment. HTTP API and UI flows have been tested locally;
+  image builds and the full Compose stack still need verification.
+- Supports a single application process. Tablet presence is kept in memory
+  and restored by polling after a restart.
+- Each tablet can have only one active request. Tablets poll the API roughly
+  once per second.
+- The slideshow proxy targets the existing transmitter's routes;
+  other players may require a different adapter.
+- No Logus integration, guest or individual service association, user accounts,
+  or analytics reports.
+- Changes to embedded frontend files require rebuilding the application or image.
 
-Версия для пилотного запуска. Локально проверены HTTP API, сценарий двух экранов
-и интеграция с существующим плеером. Сборка образов и запуск всего Compose-стека
-требуют отдельной проверки; проверка конфигурации Compose её не заменяет.
-
-Состояние подключения устройств хранится в памяти одного процесса. Несколько
-экземпляров приложения за балансировщиком пока не поддерживаются.
-В этой версии нет интеграции с Logus, привязки к гостю или конкретной услуге,
-личных кабинетов и аналитических отчётов.
-
-Логотип и шрифты интерфейса взяты из материалов
-[санатория «Дон»](https://www.donresort.ru/) для внутреннего пилота.
+The logo and fonts come from [Don Resort](https://www.donresort.ru/)
+materials for the internal pilot.
