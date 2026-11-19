@@ -11,8 +11,13 @@
   <link rel="stylesheet" href="/app.css">
   <script src="/app.js" defer></script>
   <script src="/tablet.js" defer></script>
+  <script src="/tablet-display.js" defer></script>
 </head>
 <body class="tablet-page">
+  <aside id="display-controls" class="display-controls" aria-label="Режим экрана">
+    <button id="enter-fullscreen" class="text-button" type="button">На весь экран</button>
+    <span id="display-message" role="status" aria-live="polite"></span>
+  </aside>
   <div id="slideshow-stage" class="slideshow-stage" aria-label="Экран ожидания">
     <div id="standby-brand" class="standby-brand">
       <img src="/assets/don-logo.svg" alt="Санаторий Дон" width="240" height="85">

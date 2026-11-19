@@ -59,6 +59,7 @@ func integrationStore(t *testing.T) (*Store, *pgxpool.Pool) {
 		t.Fatal(err)
 	}
 	applyTestMigration(t, pool, "000003_request_lifecycle.up.sql")
+	applyTestMigration(t, pool, "000004_device_registry.up.sql")
 	return NewStore(pool), pool
 }
 

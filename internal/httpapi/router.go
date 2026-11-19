@@ -14,6 +14,7 @@ func NewRouterWithOptions(store RatingScore, options Options) *http.ServeMux {
 		options.RequestTTL = 30 * time.Second
 	}
 	handler := Handler{store: store, runtime: &runtimeState{options: options, seen: make(map[string]time.Time)}}
+	handler.registry, _ = store.(DeviceRegistry)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", Health)
 	mux.HandleFunc("GET /version", Version)
@@ -26,6 +27,7 @@ func NewRouterWithOptions(store RatingScore, options Options) *http.ServeMux {
 		}
 		writeJSON(w, 200, map[string]bool{"ready": true})
 	})
+	mux.HandleFunc("POST /api/admin/devices", handler.admin(handler.RegisterDevice))
 	mux.HandleFunc("POST /rating", handler.admin(handler.SubmitRating))
 	mux.HandleFunc("GET /rating/{request_id}", handler.admin(handler.GetRating))
 	mux.HandleFunc("POST /request", handler.admin(handler.CreateRatingRequest))

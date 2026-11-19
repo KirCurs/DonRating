@@ -879,3 +879,22 @@ input[type=password] { min-width:0; width:100%; height:53px; border:1px solid #c
   .request-countdown { margin-left:6px; padding:4px 5px; min-width:35px }
   .tablet-page .page-footer { font-size:8px }
 }
+
+/* Tablet display controls remain outside the slideshow iframe and rating dialog. */
+.display-controls { position:fixed; top:12px; right:16px; z-index:30; display:flex; align-items:center; gap:12px; max-width:calc(100% - 32px); padding:6px 12px; background:var(--ivory); border:1px solid var(--line); border-radius:3px }
+.display-controls .text-button { font-size:12px; white-space:nowrap }
+.display-controls span { max-width:300px; font-size:11px; color:var(--muted); line-height:1.5 }
+.display-controls[hidden] { display:none }
+.device-picker { margin:0 0 24px; max-width:540px }
+.device-picker select { width:100%; padding:12px; border:1px solid var(--line); border-radius:3px; background:#fbfaf5; color:var(--forest); font:inherit }
+.device-picker p { margin:9px 0 0; font-size:11px; line-height:1.7; color:var(--muted) }
+
+#enrollment-panel { max-width:700px }
+#enrollment-panel p { font-size:12px; line-height:1.8 }
+#enrollment-panel input[type=text] { min-width:0; width:100%; height:53px; border:1px solid var(--line); background:#fcfbf7; padding:0 12px; color:var(--forest); border-radius:2px; font:inherit }
+#enrollment-result { margin-top:20px; border-top:1px solid var(--line); padding-top:10px }
+
+.tablet-qr-panel { margin:20px 0; max-width:320px }
+.tablet-qr { width:100%; max-width:320px; background:#fff; border:1px solid var(--line) }
+.tablet-qr svg { display:block; width:100%; height:auto; aspect-ratio:1 }
+.tablet-qr-panel figcaption { margin-top:10px; font-size:12px; line-height:1.7; color:var(--muted) }

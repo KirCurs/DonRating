@@ -82,13 +82,14 @@ migrate -path migrations -database "$DATABASE_URL" version
 
 The example backup path is overwritten on subsequent runs. Use unique filenames
 and dedicated protected storage for regular backups.
-The current schema version is 3, with `dirty=false`.
+The current schema version is 4, with `dirty=false`.
 
 | Version | Change |
 | --- | --- |
 | 1 | `ratings` table |
 | 2 | `rating_requests` table |
 | 3 | Request statuses, lifetime, constraints, and indexes |
+| 4 | Persistent tablet registry with token digests |
 
 Migration 3 preserves existing ratings. Legacy requests without reliable lifetime
 information are closed: requests with ratings become answered, and the others
@@ -160,3 +161,16 @@ handlers additionally print the request method to stdout; logging is not yet
 fully uniform. SIGINT/SIGTERM allow up to ten seconds for HTTP requests to finish.
 The startup database connection check has a five-second timeout.
 Device heartbeat state is restored by polling after a restart.
+
+## Tablet enrollment
+
+After applying migration 4, add a tablet by name in `/admin` and open the returned
+link on that device. No server restart or `DEVICES_JSON` change is required.
+The browser persists its key in local storage. Configured devices continue to
+work with `DEVICE_TOKENS_JSON`. Enrolled devices always require their own key,
+including on loopback. Keep enrollment links private and backed up securely.
+There is currently no UI for revoking or renaming enrolled devices.
+
+For reliable unattended operation, configure the tablet OS/browser in kiosk mode
+and prevent screen sleep in device settings. Web fullscreen and wake lock are
+best-effort conveniences and do not replace kiosk configuration.

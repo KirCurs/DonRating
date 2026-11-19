@@ -4,11 +4,16 @@
   const { json, storage, active, scores } = window.DonAPI;
   const deviceId = new URL(location.href).searchParams.get('device_id')?.trim() || 'reception-1';
   const tokenKey = 'don-tablet-token:' + deviceId;
-  let token = storage.get(tokenKey);
+  // Tablet credentials survive tab and browser restarts on the reception device.
+  const tabletStorage = {
+    get() { try { return localStorage.getItem(tokenKey) || storage.get(tokenKey); } catch { return storage.get(tokenKey); } },
+    set(value) { try { localStorage.setItem(tokenKey, value); } catch { storage.set(tokenKey, value); } },
+  };
+  let token = tabletStorage.get();
   const fragment = new URLSearchParams(location.hash.slice(1));
   if (fragment.has('token')) {
     token = fragment.get('token') || '';
-    storage.set(tokenKey, token);
+    tabletStorage.set(token);
     history.replaceState(null, '', location.pathname + location.search);
   }
   const base = '/api/tablets/' + encodeURIComponent(deviceId);

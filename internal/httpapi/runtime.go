@@ -3,6 +3,8 @@ package httpapi
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
+	"example.com/ratingdon/internal/feedback"
 	"net"
 	"net/http"
 	"net/url"
@@ -99,18 +101,35 @@ func (h *Handler) admin(next http.HandlerFunc) http.HandlerFunc {
 func (h *Handler) tablet(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("device_id")
-		if !h.runtime.knownDevice(id) {
-			fail(w, 404, "unknown_device", "Планшет не зарегистрирован")
-			return
-		}
+
 		if !sameOrigin(r) {
 			fail(w, 403, "origin_denied", "Недопустимый источник запроса")
 			return
 		}
-		token := h.runtime.options.DeviceTokens[id]
-		if (token != "" && !tokenMatches(r, token)) || (token == "" && !localRequest(r)) {
-			fail(w, 401, "unauthorized", "Укажите ключ этого планшета")
-			return
+		if _, configured := h.configuredDevice(id); configured {
+			token := h.runtime.options.DeviceTokens[id]
+			if (token != "" && !tokenMatches(r, token)) || (token == "" && !localRequest(r)) {
+				fail(w, 401, "unauthorized", "Укажите ключ этого планшета")
+				return
+			}
+		} else {
+			if h.registry == nil {
+				fail(w, 404, "unknown_device", "Планшет не зарегистрирован")
+				return
+			}
+			device, err := h.registry.GetDevice(r.Context(), id)
+			if errors.Is(err, feedback.ErrDeviceNotFound) {
+				fail(w, 404, "unknown_device", "Планшет не зарегистрирован")
+				return
+			}
+			if err != nil {
+				storageError(w, err)
+				return
+			}
+			if !hashedTokenMatches(r, device.TokenHash) {
+				fail(w, 401, "unauthorized", "Укажите ключ этого планшета")
+				return
+			}
 		}
 		next(w, r)
 	}

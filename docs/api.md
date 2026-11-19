@@ -21,6 +21,7 @@ UI pages are accessible without a token; API authorization is checked separately
 | `GET /health` | Public | 200, plain text `ok` |
 | `GET /ready` | Public | 200, `{"ready":true}`; 503 if the database check fails |
 | `GET /version` | Public | 200, plain text version |
+| `POST /api/admin/devices` | Receptionist | 201, device ID, name, and enrollment URL |
 | `POST /requests` | Receptionist | 201, created request |
 | `POST /request` | Receptionist | Alias of `/requests` |
 | `GET /requests/{id}` | Receptionist | 200, request |
@@ -133,3 +134,25 @@ they do not follow the JSON error format above.
 The compatibility endpoint `POST /rating` accepts
 `{"request_id":"…","score":5}`. It also requires an issued request and enforces
 its lifecycle. An arbitrary identifier cannot create a new rating.
+
+## Enrolling a tablet
+
+`POST /api/admin/devices` accepts `{"name":"Reception left"}`. Names are trimmed,
+required, and limited to 100 Unicode code points. The server generates the device
+ID and a random 256-bit key, persists its SHA-256 digest, and returns:
+
+```json
+{
+  "id": "tablet-b7726c54-3561-490e-86b2-4d7e8c97a100",
+  "name": "Reception left",
+  "tablet_url": "/tablet?device_id=tablet-b7726c54-3561-490e-86b2-4d7e8c97a100#token=GENERATED_SECRET"
+}
+```
+
+Open the relative URL on the application origin. The secret is disclosed only
+in this creation response; it is not included in device state responses.
+Enrolled devices use their key even when accessing the application locally.
+`GET /api/admin/state` includes both configured and enrolled devices.
+Enrollment errors include 400 `invalid_device`, 409 `device_conflict`,
+500 `registration_failed`, and 503 `registration_unavailable` if the storage
+implementation does not support enrollment. Database failures use `storage_error`.

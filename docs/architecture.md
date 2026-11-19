@@ -83,5 +83,7 @@ the player while the form is visible and resumes it in the same iframe.
 ## Deployment boundaries
 
 The pilot uses one application process. Horizontal scaling would require
-shared device presence tracking. Devices and tokens are configured at startup;
-there is no device enrollment interface or user account system.
+shared device presence tracking. Devices can be configured at startup or enrolled through the administrator API.
+Enrolled device names and token digests are stored in `device_registry`.
+Configured IDs take precedence if they overlap an enrolled ID.
+There is no user account system.

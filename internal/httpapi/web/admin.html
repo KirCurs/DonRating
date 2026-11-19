@@ -10,6 +10,8 @@
   <link rel="preload" href="/assets/cormorant-semibold.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/app.css">
   <script src="/app.js" defer></script>
+  <script src="/vendor/qrcode.js" defer></script>
+  <script src="/enrollment-qr.js" defer></script>
   <script src="/admin.js" defer></script>
 </head>
 <body class="admin-page">
@@ -35,6 +37,32 @@
       </section>
       <div class="connection-row"><p id="admin-connection" class="connection-status" role="status" aria-live="polite">Подключаемся к планшетам…</p><button id="change-access" class="text-button" hidden type="button">Изменить ключ доступа</button></div>
       <p id="admin-error" class="admin-error error-message" role="alert" hidden></p>
+      <section id="enrollment-panel" class="login-panel" aria-labelledby="enrollment-title">
+        <h2 id="enrollment-title">Подключить планшет</h2>
+        <form id="enrollment-form">
+          <label class="field-label" for="device-name">Название, например «Ресепшен · левый»</label>
+          <div class="login-row"><input id="device-name" type="text" maxlength="100" required><button id="enroll-device" class="button button-primary" type="submit">Добавить</button></div>
+        </form>
+        <p id="enrollment-error" class="form-message error-message" role="alert" hidden></p>
+        <div id="enrollment-result" hidden>
+          <p>Отсканируйте QR-код камерой планшета или откройте ссылку на нём. Она содержит ключ доступа — сохраните её и не передавайте гостям.</p>
+          <p id="enrollment-local-note" hidden>Админка открыта по локальному адресу. Для другого устройства откройте её по сетевому HTTPS-адресу сервера и создайте ссылку оттуда.</p>
+          <figure id="tablet-qr-panel" class="tablet-qr-panel" hidden>
+            <div id="tablet-qr" class="tablet-qr"></div>
+            <figcaption>Наведите камеру планшета и откройте ссылку для подключения.</figcaption>
+          </figure>
+          <p id="tablet-qr-error" role="status" hidden>Не удалось создать QR-код. Используйте ссылку ниже.</p>
+          <label class="field-label" for="tablet-link">Ссылка для подключения</label>
+          <input id="tablet-link" type="text" readonly spellcheck="false">
+          <button id="copy-tablet-link" class="text-button" type="button">Скопировать ссылку</button>
+          <p id="copy-status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+      <div class="device-picker">
+        <label class="field-label" for="device-picker">Планшет для оценки</label>
+        <select id="device-picker"><option value="">Все планшеты</option></select>
+        <p>Выберите планшет и нажмите «Попросить оценку» в его карточке.</p>
+      </div>
       <section id="device-list" class="device-list" aria-label="Планшеты стойки регистрации" aria-busy="true"></section>
       <p id="empty-devices" class="empty-devices" hidden>Планшеты пока не настроены.</p>
       <p class="admin-help">Нажмите «Попросить оценку», когда планшет передан гостю. После ответа или через 30 секунд экран вернётся к показу слайдов.</p>

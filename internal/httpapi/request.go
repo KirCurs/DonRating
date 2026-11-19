@@ -18,7 +18,12 @@ func (h *Handler) CreateRatingRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input.DeviceID = strings.TrimSpace(input.DeviceID)
-	if !h.runtime.knownDevice(input.DeviceID) {
+	exists, err := h.deviceExists(r.Context(), input.DeviceID)
+	if err != nil {
+		storageError(w, err)
+		return
+	}
+	if !exists {
 		fail(w, 400, "unknown_device", "Выберите известный планшет")
 		return
 	}
@@ -87,7 +92,12 @@ func (h *Handler) TabletAnswer(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) AdminState(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UTC()
 	devices := make([]map[string]any, 0, len(h.runtime.options.Devices))
-	for _, device := range h.runtime.options.Devices {
+	known, err := h.devices(r.Context())
+	if err != nil {
+		storageError(w, err)
+		return
+	}
+	for _, device := range known {
 		request, err := h.store.GetLatestRequest(r.Context(), device.ID)
 		if err != nil {
 			storageError(w, err)

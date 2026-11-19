@@ -3,6 +3,14 @@
   const $ = (id) => document.getElementById(id);
   const { json, storage, active, scores } = window.DonAPI;
   const cards = new Map();
+  const picker = $('device-picker');
+  let selectedDevice = storage.get('don-admin-device');
+  let deviceSignature = '';
+  picker.addEventListener('change', () => {
+    selectedDevice = picker.value;
+    storage.set('don-admin-device', selectedDevice);
+    render();
+  });
   const busyDevices = new Set();
   let token = storage.get('don-admin-token');
   let snapshot = null;
@@ -15,6 +23,7 @@
   let polling = false;
   let stopped = false;
   let lastConnected = null;
+  let enrolling = false;
 
   function connection(message, good = false) {
     $('admin-connection').textContent = message;
@@ -25,6 +34,7 @@
     $('admin-error').textContent = message;
   }
   function requireLogin(message = '') {
+    clearEnrollment();
     authRequired = true;
     connected = false;
     $('login-panel').hidden = false;
@@ -59,10 +69,23 @@
   }
   function render() {
     const devices = Array.isArray(snapshot?.devices) ? snapshot.devices : [];
+    const signature = JSON.stringify(devices.map(({ id, name, online }) => [id, name, connected && online]));
+    if (signature !== deviceSignature) {
+      deviceSignature = signature;
+      const all = new Option('Все планшеты', '');
+      picker.replaceChildren(all, ...devices.map((device) => new Option(
+        (device.name || device.id) + ' · ' + device.id + (connected && device.online ? ' · В сети' : ' · Не в сети'), device.id)));
+      if (snapshot && selectedDevice && !devices.some((device) => device.id === selectedDevice)) {
+        selectedDevice = ''; storage.set('don-admin-device', '');
+      }
+      picker.value = selectedDevice;
+    }
+    picker.disabled = !connected || authRequired || devices.length === 0;
     const current = new Set(devices.map((device) => device.id));
     for (const [id, card] of cards) if (!current.has(id)) { card.article.remove(); cards.delete(id); }
     for (const device of devices) {
       const card = cards.get(device.id) || createCard(device);
+      card.article.hidden = Boolean(selectedDevice && selectedDevice !== device.id);
       const online = connected && !authRequired && device.online === true;
       const request = device.request;
       const waiting = active(request);
@@ -95,6 +118,8 @@
     $('device-list').setAttribute('aria-busy', String(!snapshot && !authRequired));
     if (snapshot?.request_ttl_seconds) $('request-ttl').textContent = String(snapshot.request_ttl_seconds);
     $('change-access').hidden = !token || authRequired;
+    $('enrollment-panel').hidden = !connected || authRequired;
+    $('enroll-device').disabled = !connected || authRequired || enrolling;
   }
   async function trigger(deviceId) {
     const device = snapshot?.devices?.find((item) => item.id === deviceId);
@@ -153,6 +178,53 @@
       schedule();
     }
   }
+  function clearEnrollment() {
+    $('tablet-link').value = ''; $('enrollment-result').hidden = true;
+    $('tablet-qr').replaceChildren(); $('tablet-qr-panel').hidden = true; $('tablet-qr-error').hidden = true;
+    $('enrollment-error').hidden = true; $('copy-status').textContent = '';
+  }
+  $('enrollment-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!connected || authRequired || enrolling) return;
+    const name = $('device-name').value.trim();
+    if (!name) return;
+    const attempt = generation;
+    enrolling = true; clearEnrollment(); render();
+    try {
+      const data = await json('/api/admin/devices', { method: 'POST', token, body: JSON.stringify({ name }) });
+      if (attempt !== generation || stopped) return;
+      const url = new URL(data.tablet_url, location.origin);
+      if (url.origin !== location.origin || url.pathname !== '/tablet') throw new Error('Некорректная ссылка планшета');
+      $('tablet-link').value = url.href; $('enrollment-result').hidden = false;
+      const qrReady = window.DonEnrollmentQR?.render($('tablet-qr'), url.href) === true;
+      $('tablet-qr-panel').hidden = !qrReady;
+      $('tablet-qr-error').hidden = qrReady;
+      $('enrollment-local-note').hidden = !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+      $('device-name').value = '';
+      selectedDevice = data.id; storage.set('don-admin-device', selectedDevice);
+      // Do not render against an older snapshot: that would reset the new selection.
+      revision += 1;
+      if (snapshot?.devices) snapshot.devices.push({ id: data.id, name: data.name, online: false, request: null });
+    } catch (error) {
+      if (attempt !== generation || stopped) return;
+      if (error.status === 401) requireLogin('Ключ доступа не принят.');
+      else { $('enrollment-error').textContent = error.message; $('enrollment-error').hidden = false; }
+    } finally {
+      enrolling = false; render(); if (!polling && !authRequired) schedule(0);
+    }
+  });
+  $('copy-tablet-link').addEventListener('click', async () => {
+    const value = $('tablet-link').value;
+    if (!value) return;
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(value);
+      $('copy-status').textContent = 'Ссылка скопирована';
+    } catch {
+      $('tablet-link').focus(); $('tablet-link').select();
+      $('copy-status').textContent = 'Скопируйте выделенную ссылку вручную';
+    }
+  });
   $('login-form').addEventListener('submit', (event) => {
     event.preventDefault();
     const value = $('admin-token').value.trim();

@@ -51,7 +51,9 @@ docker compose down
 
 `down` preserves data; adding `-v` deletes the database volume.
 For a native Go 1.25.3 setup, see [Operations](docs/operations.md).
-Screen setup is covered in the [UI guide](docs/ui.md).
+Screen setup is covered in the [UI guide](docs/ui.md). Add further tablets
+by name in the receptionist interface and open each generated link on its device.
+Registration is persistent; no configuration edit or restart is needed.
 
 ## Configuration
 
@@ -90,6 +92,9 @@ migrations, and troubleshooting.
   other players may require a different adapter.
 - No Logus integration, guest or individual service association, user accounts,
   or analytics reports.
+- Browser fullscreen cannot prevent exiting the browser. Unattended tablets
+  require OS/browser kiosk configuration; screen wake lock is best effort.
+- No UI for revoking or renaming enrolled tablets yet.
 - Changes to embedded frontend files require rebuilding the application or image.
 
 The logo and fonts come from [Don Resort](https://www.donresort.ru/)

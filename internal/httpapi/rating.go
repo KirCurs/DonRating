@@ -23,8 +23,9 @@ type RatingScore interface {
 }
 
 type Handler struct {
-	store   RatingScore
-	runtime *runtimeState
+	store    RatingScore
+	registry DeviceRegistry
+	runtime  *runtimeState
 }
 type apiError struct {
 	Error   string `json:"error"`
