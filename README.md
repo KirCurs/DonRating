@@ -14,7 +14,10 @@ status, and the latest response.
 
 Built with Go, `net/http`, and pgx/v5. The HTML/CSS/JavaScript interface is
 embedded in the binary; no separate frontend server is required.
-See [Architecture](docs/architecture.md) and [HTTP API](docs/api.md) for details.
+See [Architecture](docs/architecture.en.md) and [HTTP API](docs/api.en.md) for details.
+
+На русском доступны [архитектура](docs/architecture.ru.md), [HTTP API](docs/api.ru.md),
+[запуск и эксплуатация](docs/operations.ru.md) и [интерфейс](docs/ui.ru.md).
 
 ## Getting started
 
@@ -50,8 +53,8 @@ docker compose down
 ```
 
 `down` preserves data; adding `-v` deletes the database volume.
-For a native Go 1.25.3 setup, see [Operations](docs/operations.md).
-Screen setup is covered in the [UI guide](docs/ui.md). Add further tablets
+For a native Go 1.25.3 setup, see [Operations](docs/operations.en.md).
+Screen setup is covered in the [UI guide](docs/ui.en.md). Add further tablets
 by name in the receptionist interface and open each generated link on its device.
 Registration is persistent; no configuration edit or restart is needed.
 
@@ -77,7 +80,7 @@ tablet, all at least 24 characters long. Compose requires these tokens and
 publishes the application only on `127.0.0.1:8080`. Physical tablets require
 network access and HTTPS.
 
-See [Operations](docs/operations.md) for player integration, device configuration,
+See [Operations](docs/operations.en.md) for player integration, device configuration,
 migrations, and troubleshooting.
 
 ## Limitations

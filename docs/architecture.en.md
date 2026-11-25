@@ -1,5 +1,7 @@
 # Architecture
 
+[Русский](architecture.ru.md)
+
 RatingDon is a single Go application with an HTTP API, an embedded frontend,
 and PostgreSQL storage. The existing slideshow transmitter runs separately
 and is accessed over HTTP.

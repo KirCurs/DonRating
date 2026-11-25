@@ -1,5 +1,7 @@
 # UI guide
 
+[Русский](ui.ru.md)
+
 ## Receptionist screen
 
 URL: `/admin`. If authorization is enabled, enter the receptionist token.

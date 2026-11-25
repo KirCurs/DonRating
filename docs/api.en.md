@@ -1,5 +1,7 @@
 # HTTP API
 
+[Русский](api.ru.md)
+
 Default local base URL: `http://127.0.0.1:8080`.
 The examples use `$BASE_URL` for this address. POST bodies must contain a single
 JSON object, at most 4096 bytes. Unknown fields and additional JSON values

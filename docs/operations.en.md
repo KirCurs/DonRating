@@ -1,5 +1,7 @@
 # Operations
 
+[Русский](operations.ru.md)
+
 ## Running without Docker
 
 Requirements: Go 1.25.3, PostgreSQL (version 16 was used for the pilot),
